@@ -7,7 +7,8 @@ use std::{
 use log::{debug, error, info};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
-    hash::Hash, message::VersionedMessage, signers::Signers, transaction::VersionedTransaction,
+    hash::Hash, instruction::Instruction, message::VersionedMessage, pubkey::Pubkey,
+    signers::Signers, transaction::VersionedTransaction,
 };
 
 #[derive(Clone)]
@@ -18,6 +19,20 @@ pub struct MailBuilder<T: Signers + Sized + Clone> {
 
 impl<T: Signers + Sized + Clone> MailBuilder<T> {
     pub fn new(message: VersionedMessage, signers: T) -> Self {
+        Self {
+            message,
+            keypairs: signers,
+        }
+    }
+
+    pub fn new_legacy_transaction(
+        instructions: &[Instruction],
+        payer: Option<&Pubkey>,
+        signers: T,
+    ) -> Self {
+        let message =
+            VersionedMessage::Legacy(solana_sdk::message::Message::new(instructions, payer));
+
         Self {
             message,
             keypairs: signers,
