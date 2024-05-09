@@ -7,22 +7,19 @@ use std::{
 use log::{debug, error, info};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
-    hash::Hash, instruction::Instruction, message::VersionedMessage, pubkey::Pubkey,
-    signers::Signers, transaction::VersionedTransaction,
+    compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::Instruction,
+    message::VersionedMessage, pubkey::Pubkey, signers::Signers, transaction::VersionedTransaction,
 };
 
 #[derive(Clone)]
 pub struct MailBuilder<T: Signers + Sized + Clone> {
     message: VersionedMessage,
-    keypairs: T,
+    signers: T,
 }
 
 impl<T: Signers + Sized + Clone> MailBuilder<T> {
     pub fn new(message: VersionedMessage, signers: T) -> Self {
-        Self {
-            message,
-            keypairs: signers,
-        }
+        Self { message, signers }
     }
 
     pub fn new_legacy_transaction(
@@ -33,10 +30,29 @@ impl<T: Signers + Sized + Clone> MailBuilder<T> {
         let message =
             VersionedMessage::Legacy(solana_sdk::message::Message::new(instructions, payer));
 
-        Self {
-            message,
-            keypairs: signers,
+        Self { message, signers }
+    }
+
+    pub fn new_legacy_transaction_with_cu_config(
+        instructions: &[Instruction],
+        payer: Option<&Pubkey>,
+        signers: T,
+        cu_price: Option<u64>,
+        cu_limit: Option<u32>,
+    ) -> Self {
+        let mut ixs = instructions.to_vec();
+
+        if let Some(price) = cu_price {
+            ixs.push(ComputeBudgetInstruction::set_compute_unit_price(price))
         }
+
+        if let Some(limit) = cu_limit {
+            ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(limit))
+        }
+
+        let message = VersionedMessage::Legacy(solana_sdk::message::Message::new(&ixs, payer));
+
+        Self { message, signers }
     }
 
     pub(crate) fn make_signed_versioned_transaction(
@@ -46,7 +62,7 @@ impl<T: Signers + Sized + Clone> MailBuilder<T> {
         let mut message = self.message.clone();
         message.set_recent_blockhash(blockhash);
 
-        VersionedTransaction::try_new(message, &self.keypairs)
+        VersionedTransaction::try_new(message, &self.signers)
     }
 }
 
