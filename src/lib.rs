@@ -5,7 +5,7 @@ use std::{
 };
 
 use log::{debug, error, info};
-use solana_client::rpc_client::RpcClient;
+use solana_client::{rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig};
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::Instruction,
     message::VersionedMessage, pubkey::Pubkey, signers::Signers, transaction::VersionedTransaction,
@@ -84,6 +84,7 @@ pub struct MassmailCfg {
     pub tx_timeout: std::time::Duration,
     pub commitment: solana_sdk::commitment_config::CommitmentConfig,
     pub dry_run: bool,
+    pub skip_preflight: bool,
 }
 
 impl MassmailCfg {
@@ -93,6 +94,7 @@ impl MassmailCfg {
         tx_timeout: Duration::from_secs(45),
         commitment: solana_sdk::commitment_config::CommitmentConfig::confirmed(),
         dry_run: false,
+        skip_preflight: true,
     };
 }
 
@@ -165,7 +167,13 @@ pub fn massmail<T: Signers + Clone>(
 
         while let Some(tx_builder) = to_send_next.pop() {
             let tx = tx_builder.make_signed_versioned_transaction(blockhash)?;
-            let sig = rpc_client.send_transaction(&tx);
+            let sig = rpc_client.send_transaction_with_config(
+                &tx,
+                RpcSendTransactionConfig {
+                    skip_preflight: cfg.skip_preflight,
+                    ..Default::default()
+                },
+            );
 
             match sig {
                 Ok(sig) => {
@@ -182,7 +190,7 @@ pub fn massmail<T: Signers + Clone>(
                     }
 
                     outstanding_to_send.push(tx_builder.clone());
-                    debug!("Failed to send transaction: {:?}", e);
+                    error!("Failed to send transaction: {:?}", e);
                 }
             }
         }
@@ -262,10 +270,18 @@ mod tests {
         signers.push(Arc::new(Keypair::new()));
 
         // Create a TxBuilder
-        let tx_builder = MailBuilder::new(VersionedMessage::default(), signers);
+        let tx_builder = MailBuilder::new(VersionedMessage::default(), signers.clone());
 
         // Create a vector of TxBuilders
         let mut tx_builders = vec![];
+
+        let tx_builder = MailBuilder::new_legacy_transaction_with_cu_config(
+            &[],
+            Some(&Pubkey::default()),
+            signers.clone(),
+            None,
+            None,
+        );
 
         tx_builders.push(tx_builder);
 
