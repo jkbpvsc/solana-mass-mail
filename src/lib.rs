@@ -302,6 +302,8 @@ pub mod nonblocking {
             return dryrun(rpc_client, outstanding_to_send).await;
         }
 
+        let mut last_update = Instant::now();
+
         let start = Instant::now();
         let mut to_send_next = vec![];
         let mut to_confirm = HashMap::new();
@@ -406,6 +408,17 @@ pub mod nonblocking {
                 total_to_send,
                 to_confirm.len(),
             );
+
+            if last_update.elapsed() > Duration::from_secs(15) {
+                last_update = Instant::now();
+
+                info!(
+                    "Landed: {}/{}, remaining {}",
+                    landed.len(),
+                    total_to_send,
+                    outstanding_to_send.len()
+                );
+            }
         }
 
         info!(
