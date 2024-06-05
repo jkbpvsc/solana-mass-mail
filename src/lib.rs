@@ -141,6 +141,8 @@ pub fn massmail<T: Signers + Clone>(
     mut outstanding_to_send: Vec<MailBuilder<T>>,
     cfg: MassmailCfg,
 ) -> Result<(), MassmailError> {
+    info!("Sending {} transactions", outstanding_to_send.len());
+
     if cfg.dry_run {
         return dryrun(rpc_client, outstanding_to_send);
     }
@@ -313,6 +315,7 @@ pub mod nonblocking {
         mut outstanding_to_send: Vec<MailBuilder<T>>,
         cfg: MassmailCfg,
     ) -> Result<(), MassmailError> {
+        info!("Sending {} transactions", outstanding_to_send.len());
         if cfg.dry_run {
             return dryrun(rpc_client, outstanding_to_send).await;
         }
