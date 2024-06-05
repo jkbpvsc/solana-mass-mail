@@ -145,6 +145,7 @@ pub fn massmail<T: Signers + Clone>(
     }
 
     let start = Instant::now();
+    let mut last_update = Instant::now();
     let mut to_send_next = vec![];
     let mut to_confirm = HashMap::new();
     let mut landed = HashSet::new();
@@ -243,6 +244,17 @@ pub fn massmail<T: Signers + Clone>(
             total_to_send,
             to_confirm.len(),
         );
+
+        if last_update.elapsed() > Duration::from_secs(15) {
+            last_update = Instant::now();
+
+            info!(
+                "Landed: {}/{}, remaining {}",
+                landed.len(),
+                total_to_send,
+                outstanding_to_send.len()
+            );
+        }
     }
 
     info!(
