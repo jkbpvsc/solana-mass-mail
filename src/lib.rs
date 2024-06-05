@@ -92,7 +92,9 @@ impl MassmailCfg {
         max_at_once: 30,
         max_failures: 5,
         tx_timeout: Duration::from_secs(45),
-        commitment: solana_sdk::commitment_config::CommitmentConfig::confirmed(),
+        commitment: solana_sdk::commitment_config::CommitmentConfig {
+            commitment: solana_sdk::commitment_config::CommitmentLevel::Confirmed,
+        },
         dry_run: false,
         skip_preflight: true,
     };
