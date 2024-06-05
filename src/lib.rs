@@ -7,8 +7,9 @@ use std::{
 use log::{debug, error, info};
 use solana_client::{rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig};
 use solana_sdk::{
-    compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::Instruction,
-    message::VersionedMessage, pubkey::Pubkey, signers::Signers, transaction::VersionedTransaction,
+    commitment_config::CommitmentConfig, compute_budget::ComputeBudgetInstruction, hash::Hash,
+    instruction::Instruction, message::VersionedMessage, pubkey::Pubkey, signers::Signers,
+    transaction::VersionedTransaction,
 };
 
 #[derive(Clone)]
@@ -166,7 +167,9 @@ pub fn massmail<T: Signers + Clone>(
 
         debug!("Sending {} transactions", to_send_next.len());
 
-        blockhash = rpc_client.get_latest_blockhash().unwrap();
+        (blockhash, _) = rpc_client
+            .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
+            .unwrap();
 
         while let Some(tx_builder) = to_send_next.pop() {
             let tx = tx_builder.make_signed_versioned_transaction(blockhash)?;
@@ -252,7 +255,7 @@ pub fn massmail<T: Signers + Clone>(
                 "Landed: {}/{}, remaining {}",
                 landed.len(),
                 total_to_send,
-                outstanding_to_send.len()
+                total_to_send - landed.len()
             );
         }
     }
@@ -428,7 +431,7 @@ pub mod nonblocking {
                     "Landed: {}/{}, remaining {}",
                     landed.len(),
                     total_to_send,
-                    outstanding_to_send.len()
+                    total_to_send - landed.len()
                 );
             }
         }
